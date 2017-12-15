@@ -6,6 +6,10 @@ In this project, students will extend the Sudoku-solving agent developed in the 
 
 You must have `pygame` installed.
 
+## Preview
+
+![](https://cl.ly/1q3z0n0V0C2u/Screen%20Recording%202017-12-15%20at%2001.34%20AM.gif)
+
 ## Run The Game
 
 ```
