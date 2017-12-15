@@ -1,17 +1,24 @@
-
 from utils import *
 
+letters = rows
+numbers = cols
 
 row_units = [cross(r, cols) for r in rows]
 column_units = [cross(rows, c) for c in cols]
-square_units = [cross(rs, cs) for rs in ('ABC','DEF','GHI') for cs in ('123','456','789')]
-unitlist = row_units + column_units + square_units
+square_units = [cross(rs, cs) for rs in ('ABC', 'DEF', 'GHI') for cs in ('123', '456', '789')]
+diagonal_units = [[''.join(x) for x in zip(letters, numbers)],
+                  [''.join(x) for x in zip(letters, reversed(numbers))]]
 
-# TODO: Update the unit list to add the new diagonal units
-unitlist = unitlist
+unitlist = row_units + column_units + square_units
+# Update the unit list to add the new diagonal units
+unitlist = unitlist + diagonal_units
 
 units = dict((s, [u for u in unitlist if s in u]) for s in boxes)
-peers = dict((s, set(sum(units[s],[]))-set([s])) for s in boxes)
+peers = dict((s, set(sum(units[s], [])) - {s}) for s in boxes)
+
+
+# helper method to flatten list of lists
+def flatten(l): return [item for sublist in l for item in sublist]
 
 
 def naked_twins(values):
@@ -41,8 +48,26 @@ def naked_twins(values):
     and because it is simpler (since the reduce_puzzle function already calls this
     strategy repeatedly).
     """
-    # TODO: Implement this function!
-    raise NotImplementedError
+
+    for unit in unitlist:
+        # find twins relevant to the current unit
+        twins = set()
+        for cell in unit:
+            for potential_twin in unit:
+                if values[cell] == values[potential_twin] and cell is not potential_twin and len(values[cell]) == 2:
+                    twins.add(cell)
+
+        # for cell in the unit other than twins
+        for cell in set(unit) - twins:
+            # for each digit in the cell
+            for digit in values[cell]:
+                twin_values = list(set(flatten([list(values[twin]) for twin in twins])))
+                # if the digit is also in the twin cell
+                if digit in twin_values:
+                    # remove that digit from non-twin cells
+                    values = assign_value(values, cell, values[cell].replace(digit, ''))
+
+    return values
 
 
 def eliminate(values):
@@ -61,8 +86,12 @@ def eliminate(values):
     dict
         The values dictionary with the assigned values eliminated from peers
     """
-    # TODO: Copy your code from the classroom to complete this function
-    raise NotImplementedError
+    solved_values = [box for box in values.keys() if len(values[box]) == 1]
+    for box in solved_values:
+        digit = values[box]
+        for peer in peers[box]:
+            values[peer] = values[peer].replace(digit, '')
+    return values
 
 
 def only_choice(values):
@@ -85,8 +114,12 @@ def only_choice(values):
     -----
     You should be able to complete this function by copying your code from the classroom
     """
-    # TODO: Copy your code from the classroom to complete this function
-    raise NotImplementedError
+    for unit in unitlist:
+        for digit in '123456789':
+            dplaces = [box for box in unit if digit in values[box]]
+            if len(dplaces) == 1:
+                values[dplaces[0]] = digit
+    return values
 
 
 def reduce_puzzle(values):
@@ -103,8 +136,18 @@ def reduce_puzzle(values):
         The values dictionary after continued application of the constraint strategies
         no longer produces any changes, or False if the puzzle is unsolvable 
     """
-    # TODO: Copy your code from the classroom and modify it to complete this function
-    raise NotImplementedError
+    stalled = False
+    while not stalled:
+        solved_values_before = len(
+            [box for box in values.keys() if len(values[box]) == 1])
+        values = eliminate(values)
+        values = only_choice(values)
+        solved_values_after = len(
+            [box for box in values.keys() if len(values[box]) == 1])
+        stalled = solved_values_before == solved_values_after
+        if len([box for box in values.keys() if len(values[box]) == 0]):
+            return False
+    return values
 
 
 def search(values):
@@ -126,8 +169,24 @@ def search(values):
     You should be able to complete this function by copying your code from the classroom
     and extending it to call the naked twins strategy.
     """
-    # TODO: Copy your code from the classroom to complete this function
-    raise NotImplementedError
+    # attempt to solve puzzle without DFS
+    values = reduce_puzzle(values)
+    if values is False:
+        return False  # Failed earlier
+    if all(len(values[s]) == 1 for s in boxes):
+        return values  # Solved!
+    # find the cell with least possible values
+    possibilities, cell = min(
+        (len(values[cell]), cell) for cell in boxes if len(values[cell]) > 1)
+    # DFS using recursion
+    for val in values[cell]:
+        forked_grid = values.copy()
+        # set the cell's value to any of the choices
+        forked_grid[cell] = val
+        forked_attempt = search(forked_grid)
+        # if we arrive to a full solution, stop exploring tree
+        if forked_attempt:
+            return forked_attempt
 
 
 def solve(grid):
@@ -158,6 +217,7 @@ if __name__ == "__main__":
 
     try:
         import PySudoku
+
         PySudoku.play(grid2values(diag_sudoku_grid), result, history)
 
     except SystemExit:
